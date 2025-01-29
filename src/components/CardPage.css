@@ -1,0 +1,15 @@
+#right{
+    flex: 1;
+}
+
+#left{
+    flex: 2;
+}
+
+#reviwes{
+    margin-top: 50px;
+    #item{
+        display: flex;
+        flex-direction: column;
+    }
+}
