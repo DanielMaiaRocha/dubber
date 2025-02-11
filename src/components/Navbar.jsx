@@ -44,7 +44,7 @@ const Navbar = () => {
 
           <nav className="flex flex-wrap items-center gap-4">
             <Link
-              to={"/"}
+              to={"/mainPage"}
               className="text-gray-700 hover:text-gray-500 text-lg font-semibold transition duration-300 ease-in-out"
             >
               Home

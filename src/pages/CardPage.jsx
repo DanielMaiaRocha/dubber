@@ -1,4 +1,3 @@
-import Image from "next/image";
 import React, { useEffect, useState } from "react";
 
 const CardPage = () => {
@@ -7,7 +6,6 @@ const CardPage = () => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-   
     fetch("http://localhost:8800/api/cards")
       .then((response) => {
         if (!response.ok) {
@@ -50,7 +48,7 @@ const CardPage = () => {
           <h1 className="font-bold text-2xl">{data.name}</h1>
           <div>
             <div className="flex gap-3 items-center pb-3">
-              <Image
+              <img
                 src={data.image || "/images/profile-bg.png"}
                 alt={data.name}
                 width={250}
@@ -62,7 +60,7 @@ const CardPage = () => {
               </span>
               <div id="stars" className="flex flex-row gap-1">
                 {[...Array(data.rating)].map((_, i) => (
-                  <Image
+                  <img
                     key={i}
                     src="/images/star.png"
                     alt="star"
@@ -86,7 +84,7 @@ const CardPage = () => {
             <div id="seller" className="mt-12 flex flex-col gap-3 w-[32rem]">
               <h2 className="font-semibold text-lg">About the professional</h2>
               <div className="flex items-center gap-5">
-                <Image
+                <img
                   src={data.image || "/images/profile-bg.png"}
                   alt={data.name}
                   width={250}
@@ -97,7 +95,7 @@ const CardPage = () => {
                   <h1 className="font-semibold text-md">{data.name}</h1>
                   <div id="stars" className="flex flex-row gap-1">
                     {[...Array(data.rating)].map((_, i) => (
-                      <Image
+                      <img
                         key={i}
                         src="/images/star.png"
                         alt="star"
@@ -160,7 +158,7 @@ const CardPage = () => {
           <p className="text-lg font-light text-[#555]">{data.description}</p>
           <div id="datails">
             <div id="item" className="flex flex-row gap-2">
-              <Image
+              <img
                 src="/images/clock.png"
                 alt="clock"
                 width={25}
@@ -174,7 +172,7 @@ const CardPage = () => {
           {/*<div id="features" className="flex flex-col gap-2">
             {data.features.map((feature, index) => (
               <div key={index} id="item" className="flex flex-row gap-2">
-                <Image
+                <img
                   src="/images/check.png"
                   alt="check"
                   width={25}
