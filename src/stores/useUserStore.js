@@ -149,7 +149,7 @@ export const useUserStore = create((set, get) => ({
       console.log("Token refresh response:", response.data);
 
       set({
-        user: { ...get().user, token: response.data.accessToken },
+        user: { ...get().user, token: response.data.acessToken },
         checkingAuth: false,
       });
       return response.data;
@@ -180,7 +180,7 @@ axios.interceptors.response.use(
         }
 
         refreshPromise = useUserStore.getState().refreshToken().then((refreshData) => {
-          originalRequest.headers["Authorization"] = `Bearer ${refreshData.accessToken}`;
+          originalRequest.headers["Authorization"] = `Bearer ${refreshData.acessToken}`;
           return axios(originalRequest);
         });
 
