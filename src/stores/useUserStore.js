@@ -113,7 +113,6 @@ export const useUserStore = create((set, get) => ({
       }
 
       const response = await axios.get("/auth/profile", {
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       console.log("Auth check response:", response.data);
