@@ -2,6 +2,8 @@ import { create } from "zustand";
 import axios from "../lib/axios";
 import { toast } from "react-hot-toast";
 
+let refreshPromise = null;
+
 // Definição do estado da loja com Zustand
 export const useUserStore = create((set, get) => ({
   user: null,
