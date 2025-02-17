@@ -89,22 +89,26 @@ export const useUserStore = create((set, get) => ({
   // Método para renovar o token de autenticação
   refreshToken: async () => {
     if (get().checkingAuth) return;
-
+  
     set({ checkingAuth: true });
-
+  
     try {
-      console.log("Refreshing token");
-      const response = await axios.post("/auth/refresh-token");
-
+      console.log("Refreshing token...");
+      const response = await axios.post("/auth/refresh-token", {}, { withCredentials: true }); //  Garante que os cookies sejam enviados
+  
       console.log("Token refresh response:", response.data);
+  
+      // Se a API retorna novos dados do usuário, atualizamos na store
+      if (response.data?.user) {
+        set({ user: response.data.user });
+      }
+  
       set({ checkingAuth: false });
-
       return response.data;
     } catch (error) {
-      console.error(
-        "Token refresh error:",
-        error.response?.data || error.message
-      );
+      console.error("Token refresh error:", error.response?.data || error.message);
+  
+      // Se falhar, desloga o usuário
       set({ user: null, checkingAuth: false });
       throw error;
     }
@@ -112,8 +116,6 @@ export const useUserStore = create((set, get) => ({
 }));
 
 // Interceptor do Axios para lidar com erros e renovação de token
-let refreshPromise = null;
-
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -132,7 +134,10 @@ axios.interceptors.response.use(
         await refreshPromise;
         refreshPromise = null;
 
-        return axios(originalRequest);
+        return axios({
+          ...originalRequest,
+          method: "post", // Garante que a requisição será POST após o refresh
+        });
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError.message);
         useUserStore.getState().logout();
@@ -143,3 +148,4 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
