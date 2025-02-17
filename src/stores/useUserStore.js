@@ -96,7 +96,7 @@ export const useUserStore = create((set, get) => ({
 
     try {
       console.log("Refreshing token"); // Log para debug
-      const response = await axios.post("/auth/refresh-token");
+      const response = await axios.post("/refresh-token");
       console.log("Token refresh response:", response.data); // Log de resposta
       set({ checkingAuth: false });
       return response.data;
