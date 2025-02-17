@@ -4,10 +4,10 @@ import { toast } from "react-hot-toast";
 
 let refreshPromise = null;
 
-// Interceptor para incluir o token em todas as requisições automaticamente
+// Interceptor para incluir o token em todas as requisições automaticamente via estado global
 axios.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = useUserStore.getState().user?.token;
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
@@ -41,11 +41,6 @@ export const useUserStore = create((set, get) => ({
       set({ user: res.data, loading: false });
       toast.success("Account created successfully!");
 
-      // Salva o token no localStorage
-      if (res.data.token) {
-        localStorage.setItem("token", res.data.token);
-      }
-
       // Chama refreshToken após o cadastro
       await get().refreshToken();
     } catch (error) {
@@ -67,11 +62,6 @@ export const useUserStore = create((set, get) => ({
       set({ user: res.data, loading: false });
       toast.success("Logged in successfully!");
 
-      // Salva o token no localStorage
-      if (res.data.token) {
-        localStorage.setItem("token", res.data.token);
-      }
-
       // Chama refreshToken após o login
       await get().refreshToken();
     } catch (error) {
@@ -86,9 +76,6 @@ export const useUserStore = create((set, get) => ({
     try {
       console.log("Sending logout request");
       await axios.post("/auth/logout");
-
-      // Remove o token do localStorage
-      localStorage.removeItem("token");
 
       set({ user: null });
       toast.success("Logged out successfully!");
@@ -105,15 +92,7 @@ export const useUserStore = create((set, get) => ({
     try {
       console.log("Checking user authentication");
 
-      const token = localStorage.getItem("acessToken");
-      if (!token) {
-        console.error("No token found");
-        set({ checkingAuth: false, user: null });
-        return;
-      }
-
-      const response = await axios.get("/auth/profile", {
-      });
+      const response = await axios.get("/auth/profile");
 
       console.log("Auth check response:", response.data);
       set({ user: response.data, checkingAuth: false });
@@ -126,25 +105,21 @@ export const useUserStore = create((set, get) => ({
   // Método para renovar o token de autenticação
   refreshToken: async () => {
     if (get().checkingAuth) return;
-  
+
     set({ checkingAuth: true });
-  
+
     try {
       console.log("Refreshing token...");
-      
+
       const response = await axios.post(
         "/auth/refresh-token",
         {},
         { withCredentials: true } // 🔥 Envia cookies junto!
       );
-  
+
       console.log("Token refresh response:", response.data);
-  
-      if (response.data?.accessToken) {
-        localStorage.setItem("accessToken", response.data.accessToken);
-      }
-  
-      set({ checkingAuth: false });
+
+      set({ user: { ...get().user, token: response.data.accessToken }, checkingAuth: false });
       return response.data;
     } catch (error) {
       console.error("Token refresh error:", error.response?.data || error.message);
@@ -152,7 +127,6 @@ export const useUserStore = create((set, get) => ({
       throw error;
     }
   },
-  
 }));
 
 // Interceptor do Axios para lidar com erros e renovação de token
