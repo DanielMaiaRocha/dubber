@@ -105,7 +105,7 @@ export const useUserStore = create((set, get) => ({
     try {
       console.log("Checking user authentication");
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("acessToken");
       if (!token) {
         console.error("No token found");
         set({ checkingAuth: false, user: null });
