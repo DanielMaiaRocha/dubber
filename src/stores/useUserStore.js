@@ -4,19 +4,17 @@ import { toast } from "react-hot-toast";
 
 let refreshPromise = null;
 
-// Interceptor para incluir o token em todas as requisições automaticamente via estado global
+// Interceptor para incluir o token nas requisições
 axios.interceptors.request.use(
   (config) => {
     const token = useUserStore.getState().user?.token;
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
-    }
+    if (token) config.headers["Authorization"] = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Definição do estado da loja com Zustand
+// Estado global com Zustand
 export const useUserStore = create((set, get) => ({
   user: null,
   loading: false,
@@ -24,147 +22,74 @@ export const useUserStore = create((set, get) => ({
 
   setUser: (userData) => set({ user: userData }),
 
-  // Método para registrar um novo usuário
-  signup: async ({
-    name,
-    email,
-    password,
-    confirmPassword,
-    country,
-    lang,
-    isSeller,
-  }) => {
+  signup: async ({ name, email, password, confirmPassword, country, lang, isSeller }) => {
+    if (password !== confirmPassword) return toast.error("Passwords do not match");
+
     set({ loading: true });
 
-    if (password !== confirmPassword) {
-      set({ loading: false });
-      return toast.error("Passwords do not match");
-    }
-
     try {
-      console.log("Sending signup request:", {
-        name,
-        email,
-        password,
-        country,
-        lang,
-        isSeller,
-      });
-      const res = await axios.post("/auth/register", {
-        name,
-        email,
-        password,
-        country,
-        lang,
-        isSeller,
-      });
-
-      console.log("Signup response:", res.data);
+      const res = await axios.post("/auth/register", { name, email, password, country, lang, isSeller });
       set({ user: res.data, loading: false });
       toast.success("Account created successfully!");
-
-      // Chama refreshToken após o cadastro
       await get().refreshToken();
     } catch (error) {
       set({ loading: false });
-      console.error("Signup error:", error.response?.data || error.message);
-      toast.error(
-        error.response?.data?.message || "An error occurred during signup"
-      );
+      toast.error(error.response?.data?.message || "An error occurred during signup");
     }
   },
 
-  // Método de login
   login: async (email, password) => {
     set({ loading: true });
 
     try {
-      console.log("Sending login request:", { email, password });
       const res = await axios.post("/auth/login", { email, password });
-
-      console.log("Login response:", res.data);
       set({ user: res.data, loading: false });
       toast.success("Logged in successfully!");
-
-      // Chama refreshToken após o login
-      console.log("Chamando refreshToken após login...");
       await get().refreshToken();
     } catch (error) {
       set({ loading: false });
-      console.error("Login error:", error.response?.data || error.message);
-      toast.error(
-        error.response?.data?.message || "An error occurred during login"
-      );
+      toast.error(error.response?.data?.message || "An error occurred during login");
     }
   },
 
-  // Método de logout
   logout: async () => {
     try {
-      console.log("Sending logout request");
       await axios.post("/auth/logout");
-
       set({ user: null });
       toast.success("Logged out successfully!");
     } catch (error) {
-      console.error("Logout error:", error.response?.data || error.message);
-      toast.error(
-        error.response?.data?.message || "An error occurred during logout"
-      );
+      toast.error(error.response?.data?.message || "An error occurred during logout");
     }
   },
 
-  // Método para verificar a autenticação do usuário
   checkAuth: async () => {
     set({ checkingAuth: true });
 
     try {
-      console.log("Checking user authentication");
-
       const response = await axios.get("/auth/profile");
-
-      console.log("Auth check response:", response.data);
       set({ user: response.data, checkingAuth: false });
-    } catch (error) {
-      console.error("Auth check error:", error.response?.data || error.message);
+    } catch {
       set({ checkingAuth: false, user: null });
     }
   },
 
-  // Método para renovar o token de autenticação
   refreshToken: async () => {
     if (get().checkingAuth) return;
-
+    
     set({ checkingAuth: true });
 
     try {
-      console.log("Refreshing token...");
-
-      const response = await axios({
-        url: "/auth/refresh-token",
-        method: "POST",
-        withCredentials: true,
-      });
-
-      console.log("Token refresh response:", response.data);
-
-      set({
-        user: { ...get().user, token: response.data.acessToken },
-        checkingAuth: false,
-      });
+      const response = await axios.post("/auth/refresh-token", {}, { withCredentials: true });
+      set({ user: { ...get().user, token: response.data.acessToken }, checkingAuth: false });
       return response.data;
-    } catch (error) {
-      console.error(
-        "Token refresh error:",
-        error.response?.data || error.message
-      );
+    } catch {
       set({ user: null, checkingAuth: false });
-      throw error;
+      throw new Error("Token refresh failed");
     }
   },
 }));
 
-// Interceptor do Axios para lidar com erros e renovação de token
+// Interceptor para renovar o token automaticamente
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -174,25 +99,18 @@ axios.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        if (refreshPromise) {
-          await refreshPromise;
-          return axios(originalRequest);
+        if (!refreshPromise) {
+          refreshPromise = useUserStore.getState().refreshToken();
         }
 
-        refreshPromise = useUserStore.getState().refreshToken().then((refreshData) => {
-          originalRequest.headers["Authorization"] = `Bearer ${refreshData.acessToken}`;
-          return axios(originalRequest);
-        });
+        const refreshData = await refreshPromise;
+        refreshPromise = null;
 
-        originalRequest.headers[
-          "Authorization"
-        ] = `Bearer ${refreshData.token}`;
-
+        originalRequest.headers["Authorization"] = `Bearer ${refreshData.acessToken}`;
         return axios(originalRequest);
-      } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError.message);
+      } catch {
         useUserStore.getState().logout();
-        return Promise.reject(refreshError);
+        return Promise.reject(error);
       }
     }
 
