@@ -10,14 +10,12 @@ const MyCard = () => {
     email: "",
     country: "",
     language: "",
-    profileImage: null,
+    profilePic: "",
   });
-  const [videoSrc, setVideoSrc] = useState(""); // Armazenar o vídeo
-  const [error, setError] = useState("");
-  const { cards, createCard, loading } = useCardStore();
+
+  const { createCard, loading } = useCardStore();
 
   useEffect(() => {
-    // Função para buscar os dados do usuário
     const fetchUserData = async () => {
       try {
         const response = await axios.get("/auth/profile");
@@ -27,7 +25,7 @@ const MyCard = () => {
           email: user.email,
           country: user.country || "",
           language: user.lang || "",
-          profileImage: user.profilePic || null,
+          profilePic: user.profilePic || "",
         });
       } catch (error) {
         toast.error("Failed to load user data.");
@@ -39,37 +37,35 @@ const MyCard = () => {
 
   const handleTabClick = (tab) => setActiveTab(tab);
 
-  const handleVideoChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const fileType = file.type;
-
-      if (fileType.startsWith("video/")) {
-        const localVideoURL = URL.createObjectURL(file);
-        setVideoSrc(localVideoURL); // Atualiza a URL do vídeo
-        setError("");
-      } else {
-        setError("Please select a valid video file.");
-      }
-    }
-  };
-
   const handleSaveChanges = async () => {
-    const updatedData = {
-      title: document.getElementById("title").value,
-      role: document.getElementById("role").value,
-      desc: document.getElementById("desc").value,
-      price: document.getElementById("price").value,
-      country: userData.country, // Usa o país do estado
-      lang: userData.language, // Usa o idioma do estado
-      video: videoSrc, // Incluí o vídeo como parte do card
+    const role = document.getElementById("role").value.trim();
+    const desc = document.getElementById("desc").value.trim();
+    const shortDesc = document.getElementById("shortDesc").value.trim();
+    const price = parseFloat(document.getElementById("price").value);
+
+    if (!role || !desc || !shortDesc || isNaN(price) || !userData.country || !userData.language) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    const cardData = {
+      title: userData.name,
+      cover: userData.profilePic,
+      role,
+      desc,
+      shortDesc,
+      price,
+      country: userData.country,
+      lang: userData.language,
+      totalStars: 0,
+      starNumber: 0,
     };
 
     try {
-      await createCard(updatedData);
-      toast.success("Changes saved successfully!");
+      await createCard(cardData);
+      toast.success("Card created successfully!");
     } catch (error) {
-      toast.error("An error occurred while saving changes.");
+      toast.error("An error occurred while saving the card.");
     }
   };
 
@@ -85,9 +81,7 @@ const MyCard = () => {
               <div className="list-group list-group-flush flex flex-col border-r h-[38rem]">
                 <a
                   className={`list-group-item cursor-pointer rounded p-4 m-2 mb-2 w-56 ${
-                    activeTab === "account-general"
-                      ? "font-bold text-white bg-[#17a2b8]"
-                      : ""
+                    activeTab === "account-general" ? "font-bold text-white bg-[#17a2b8]" : ""
                   }`}
                   onClick={() => handleTabClick("account-general")}
                 >
@@ -98,22 +92,20 @@ const MyCard = () => {
             <div className="w-full md:w-3/4 p-4 h-[38rem]">
               <div className="tab-content mb-5">
                 {activeTab === "account-general" && (
-                  <div className="tab-pane fade show active" id="account-general">
+                  <div className="tab-pane fade show active">
                     <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold">Card Title</span>
                       <input
                         type="text"
                         id="title"
                         className="border rounded-md w-56 p-2"
-                        defaultValue={userData.name} // Preenche com o nome do usuário
+                        value={userData.name}
+                        disabled
                       />
                     </div>
                     <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold">Role</span>
-                      <select
-                        id="role"
-                        className="border rounded-md w-60 p-2 bg-white"
-                      >
+                      <select id="role" className="border rounded-md w-60 p-2 bg-white">
                         <option value="Dubbing Actor">Dubbing Actor</option>
                         <option value="Translator">Translator</option>
                         <option value="Dubbing Director">Dubbing Director</option>
@@ -122,16 +114,18 @@ const MyCard = () => {
                       </select>
                     </div>
                     <div className="flex flex-col mb-2">
+                      <span className="text-lg font-bold mb-2">Short Description</span>
+                      <input type="text" id="shortDesc" className="border rounded-md w-96 p-2" />
+                    </div>
+                    <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold mb-2">Description</span>
-                      <textarea
-                        id="desc"
-                        className="resize-none h-60 w-96 border rounded-md p-2"
-                      ></textarea>
+                      <textarea id="desc" className="resize-none h-60 w-96 border rounded-md p-2"></textarea>
                     </div>
                     <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold">Price</span>
                       <input
                         id="price"
+                        type="number"
                         className="border rounded-md w-60 p-2 bg-white"
                         placeholder="Price per hour"
                       />
@@ -141,7 +135,7 @@ const MyCard = () => {
                       <input
                         id="country"
                         className="border rounded-md w-60 p-2 bg-white"
-                        value={userData.country} // Preenche com o país do usuário
+                        value={userData.country}
                         disabled
                       />
                     </div>
@@ -150,27 +144,9 @@ const MyCard = () => {
                       <input
                         id="language"
                         className="border rounded-md w-60 p-2 bg-white"
-                        value={userData.language} // Preenche com o idioma do usuário
+                        value={userData.language}
                         disabled
                       />
-                    </div>
-                    <div className="flex flex-col mb-2">
-                      <span className="text-lg font-bold">Upload Video</span>
-                      <input
-                        type="file"
-                        className="border rounded-md w-60 p-2 bg-white"
-                        accept="video/*"
-                        onChange={handleVideoChange}
-                      />
-                      {videoSrc && (
-                        <div className="mt-2">
-                          <video width="100%" controls>
-                            <source src={videoSrc} type="video/mp4" />
-                            Your browser does not support the video tag.
-                          </video>
-                        </div>
-                      )}
-                      {error && <p className="text-red-500">{error}</p>}
                     </div>
                   </div>
                 )}
@@ -184,13 +160,6 @@ const MyCard = () => {
             className="btn btn-primary bg-[#17a2b8] text-white py-2 px-4 rounded-md"
           >
             Save changes
-          </button>
-          &nbsp;
-          <button
-            type="button"
-            className="btn btn-default border border-gray-300 bg-transparent text-gray-700 py-2 px-4 rounded-md"
-          >
-            Cancel
           </button>
         </div>
       </div>

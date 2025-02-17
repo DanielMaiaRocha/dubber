@@ -13,18 +13,25 @@ export const useUserStore = create((set, get) => ({
   setUser: (userData) => set({ user: userData }),
 
   // Método para registrar um novo usuário
-  signup: async ({ name, email, password, confirmPassword }) => {
+  signup: async ({ name, email, password, confirmPassword, country, lang, isSeller }) => {
     set({ loading: true });
-
+  
     // Verificação de senhas coincidentes
     if (password !== confirmPassword) {
       set({ loading: false });
       return toast.error("Passwords do not match");
     }
-
+  
     try {
-      console.log("Sending signup request:", { name, email, password }); // Log para debug
-      const res = await axios.post("/auth/signup", { name, email, password });
+      console.log("Sending signup request:", { name, email, password, country, lang, isSeller }); // Log para debug
+      const res = await axios.post("/auth/register", { 
+        name, 
+        email, 
+        password, 
+        country, 
+        lang, 
+        isSeller 
+      });
       console.log("Signup response:", res.data); // Log de resposta
       set({ user: res.data, loading: false });
       toast.success("Account created successfully!");
@@ -34,6 +41,7 @@ export const useUserStore = create((set, get) => ({
       toast.error(error.response?.data?.message || "An error occurred during signup");
     }
   },
+  
 
   // Método de login
   login: async (email, password) => {

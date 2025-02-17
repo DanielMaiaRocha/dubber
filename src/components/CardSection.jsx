@@ -10,35 +10,41 @@ const CardSection = () => {
   const navigate = useNavigate();
 
   const { user, checkingAuth, checkAuth } = useUserStore();
-
   const { cards, loading, error, fetchAllCards } = useCardStore();
 
+  // Verifica a autenticação do usuário
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
+  // Busca todos os cards ao carregar o componente
   useEffect(() => {
     fetchAllCards();
   }, [fetchAllCards]);
 
+  // Função para alterar a tag selecionada
   const handleTagChange = (newTag) => {
     setTag(newTag);
   };
 
+  // Filtra os cards com base na tag selecionada
   const filteredProjects = Array.isArray(cards)
     ? cards.filter((project) => {
         return tag === "All" || (project.role && project.role.includes(tag));
       })
     : [];
 
+  // Exibe o estado de loading enquanto os dados são carregados
   if (checkingAuth || loading) {
     return <div className="text-center mt-20">Loading...</div>;
   }
 
+  // Exibe uma mensagem de erro caso ocorra algum problema
   if (error) {
     return <div className="text-center mt-20">Error: {error}</div>;
   }
 
+  // Redireciona para a página de login se o usuário não estiver autenticado
   if (!user) {
     navigate("/login");
     return null;
@@ -73,9 +79,10 @@ const CardSection = () => {
         {filteredProjects.map((project) => (
           <div
             key={project._id}
-            onClick={() => navigate(`/card/${project._id}`)}
+            onClick={() => navigate(`/card/${project._id}`)} // Navega para a página do card
             role="button"
             aria-label={`View details of ${project.title}`}
+            style={{ cursor: "pointer" }} // Adiciona um cursor de ponteiro para indicar que é clicável
           >
             <Card
               id={project.userId}
