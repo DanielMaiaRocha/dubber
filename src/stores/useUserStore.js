@@ -2,8 +2,6 @@ import { create } from "zustand";
 import axios from "../lib/axios";
 import { toast } from "react-hot-toast";
 
-
-
 // Definição do estado da loja com Zustand
 export const useUserStore = create((set, get) => ({
   user: null,
@@ -15,60 +13,59 @@ export const useUserStore = create((set, get) => ({
   // Método para registrar um novo usuário
   signup: async ({ name, email, password, confirmPassword, country, lang, isSeller }) => {
     set({ loading: true });
-  
-    // Verificação de senhas coincidentes
+
     if (password !== confirmPassword) {
       set({ loading: false });
       return toast.error("Passwords do not match");
     }
-  
+
     try {
-      console.log("Sending signup request:", { name, email, password, country, lang, isSeller }); // Log para debug
-      const res = await axios.post("/auth/register", { 
-        name, 
-        email, 
-        password, 
-        country, 
-        lang, 
-        isSeller 
-      });
-      console.log("Signup response:", res.data); // Log de resposta
+      console.log("Sending signup request:", { name, email, password, country, lang, isSeller });
+      const res = await axios.post("/auth/register", { name, email, password, country, lang, isSeller });
+
+      console.log("Signup response:", res.data);
       set({ user: res.data, loading: false });
       toast.success("Account created successfully!");
+
+      // Chama refreshToken após o cadastro
+      await get().refreshToken();
     } catch (error) {
       set({ loading: false });
-      console.error("Signup error:", error.response?.data || error.message); // Log de erro
+      console.error("Signup error:", error.response?.data || error.message);
       toast.error(error.response?.data?.message || "An error occurred during signup");
     }
   },
-  
 
   // Método de login
   login: async (email, password) => {
     set({ loading: true });
 
     try {
-      console.log("Sending login request:", { email, password }); // Log para debug
+      console.log("Sending login request:", { email, password });
       const res = await axios.post("/auth/login", { email, password });
-      console.log("Login response:", res.data); // Log de resposta
+
+      console.log("Login response:", res.data);
       set({ user: res.data, loading: false });
       toast.success("Logged in successfully!");
+
+      // Chama refreshToken após o login
+      await get().refreshToken();
     } catch (error) {
       set({ loading: false });
-      console.error("Login error:", error.response?.data || error.message); // Log de erro
+      console.error("Login error:", error.response?.data || error.message);
       toast.error(error.response?.data?.message || "An error occurred during login");
     }
   },
 
-  // Método de logout
-  logout: async () => {
+   // Método de logout
+   logout: async () => {
     try {
-      console.log("Sending logout request"); // Log para debug
+      console.log("Sending logout request");
       await axios.post("/auth/logout");
       set({ user: null });
       toast.success("Logged out successfully!");
     } catch (error) {
-      console.error("Logout error:", error.response?.data || error.message); // Log de erro
+      console.error("Logout error:", error.response?.data || error.message);
       toast.error(error.response?.data?.message || "An error occurred during logout");
     }
   },
@@ -78,12 +75,13 @@ export const useUserStore = create((set, get) => ({
     set({ checkingAuth: true });
 
     try {
-      console.log("Checking user authentication"); // Log para debug
+      console.log("Checking user authentication");
       const response = await axios.get("/auth/profile");
-      console.log("Auth check response:", response.data); // Log de resposta
+
+      console.log("Auth check response:", response.data);
       set({ user: response.data, checkingAuth: false });
     } catch (error) {
-      console.error("Auth check error:", error.response?.data || error.message); // Log de erro
+      console.error("Auth check error:", error.response?.data || error.message);
       set({ checkingAuth: false, user: null });
     }
   },
@@ -95,13 +93,18 @@ export const useUserStore = create((set, get) => ({
     set({ checkingAuth: true });
 
     try {
-      console.log("Refreshing token"); // Log para debug
-      const response = await axios.post("/refresh-token");
-      console.log("Token refresh response:", response.data); // Log de resposta
+      console.log("Refreshing token");
+      const response = await axios.post("/auth/refresh-token");
+
+      console.log("Token refresh response:", response.data);
       set({ checkingAuth: false });
+
       return response.data;
     } catch (error) {
-      console.error("Token refresh error:", error.response?.data || error.message); // Log de erro
+      console.error(
+        "Token refresh error:",
+        error.response?.data || error.message
+      );
       set({ user: null, checkingAuth: false });
       throw error;
     }
@@ -116,27 +119,23 @@ axios.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Verifica se o erro foi 401 (Unauthorized)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Se um token já estiver sendo renovado, aguarde
         if (refreshPromise) {
           await refreshPromise;
           return axios(originalRequest);
         }
 
-        // Inicia o processo de renovação do token
         refreshPromise = useUserStore.getState().refreshToken();
         await refreshPromise;
         refreshPromise = null;
 
-        // Repete a requisição original com o novo token
         return axios(originalRequest);
       } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError.message); // Log de erro
-        useUserStore.getState().logout(); // Desconecta o usuário em caso de falha
+        console.error("Token refresh failed:", refreshError.message);
+        useUserStore.getState().logout();
         return Promise.reject(refreshError);
       }
     }
