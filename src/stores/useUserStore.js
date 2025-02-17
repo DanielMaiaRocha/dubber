@@ -25,7 +25,15 @@ export const useUserStore = create((set, get) => ({
   setUser: (userData) => set({ user: userData }),
 
   // Método para registrar um novo usuário
-  signup: async ({ name, email, password, confirmPassword, country, lang, isSeller }) => {
+  signup: async ({
+    name,
+    email,
+    password,
+    confirmPassword,
+    country,
+    lang,
+    isSeller,
+  }) => {
     set({ loading: true });
 
     if (password !== confirmPassword) {
@@ -34,8 +42,22 @@ export const useUserStore = create((set, get) => ({
     }
 
     try {
-      console.log("Sending signup request:", { name, email, password, country, lang, isSeller });
-      const res = await axios.post("/auth/register", { name, email, password, country, lang, isSeller });
+      console.log("Sending signup request:", {
+        name,
+        email,
+        password,
+        country,
+        lang,
+        isSeller,
+      });
+      const res = await axios.post("/auth/register", {
+        name,
+        email,
+        password,
+        country,
+        lang,
+        isSeller,
+      });
 
       console.log("Signup response:", res.data);
       set({ user: res.data, loading: false });
@@ -51,7 +73,9 @@ export const useUserStore = create((set, get) => ({
     } catch (error) {
       set({ loading: false });
       console.error("Signup error:", error.response?.data || error.message);
-      toast.error(error.response?.data?.message || "An error occurred during signup");
+      toast.error(
+        error.response?.data?.message || "An error occurred during signup"
+      );
     }
   },
 
@@ -77,7 +101,9 @@ export const useUserStore = create((set, get) => ({
     } catch (error) {
       set({ loading: false });
       console.error("Login error:", error.response?.data || error.message);
-      toast.error(error.response?.data?.message || "An error occurred during login");
+      toast.error(
+        error.response?.data?.message || "An error occurred during login"
+      );
     }
   },
 
@@ -94,7 +120,9 @@ export const useUserStore = create((set, get) => ({
       toast.success("Logged out successfully!");
     } catch (error) {
       console.error("Logout error:", error.response?.data || error.message);
-      toast.error(error.response?.data?.message || "An error occurred during logout");
+      toast.error(
+        error.response?.data?.message || "An error occurred during logout"
+      );
     }
   },
 
@@ -132,23 +160,26 @@ export const useUserStore = create((set, get) => ({
 
     try {
       console.log("Refreshing token...");
-      const response = await axios.post("/auth/refresh-token", {}, { withCredentials: true });
+
+      const response = await axios.post(
+        "//auth/refresh-token",
+        {},
+        { withCredentials: true } // 🔥 Envia cookies junto!
+      );
 
       console.log("Token refresh response:", response.data);
 
-      if (response.data?.token) {
-        localStorage.setItem("token", response.data.token); // Atualiza o token salvo
-      }
-
-      if (response.data?.user) {
-        set({ user: response.data.user });
+      if (response.data?.accessToken) {
+        localStorage.setItem("accessToken", response.data.accessToken);
       }
 
       set({ checkingAuth: false });
       return response.data;
     } catch (error) {
-      console.error("Token refresh error:", error.response?.data || error.message);
-
+      console.error(
+        "Token refresh error:",
+        error.response?.data || error.message
+      );
       set({ user: null, checkingAuth: false });
       throw error;
     }
@@ -174,7 +205,9 @@ axios.interceptors.response.use(
         const refreshData = await refreshPromise;
         refreshPromise = null;
 
-        originalRequest.headers["Authorization"] = `Bearer ${refreshData.token}`;
+        originalRequest.headers[
+          "Authorization"
+        ] = `Bearer ${refreshData.token}`;
 
         return axios(originalRequest);
       } catch (refreshError) {
