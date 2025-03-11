@@ -130,12 +130,13 @@ export const useChatStore = create((set, get) => ({
   },
 
   // Enviar uma mensagem
-  sendMessage: async (conversationId, text) => {
+  sendMessage: async (conversationId,userId, text) => {
     try {
       set({ loading: true, error: null });
 
-      const { data } = await axios.post(`/messages/${conversationId}`, { // Usando a rota /messages
+      const { data } = await axios.post(`/messages`, { // Usando a rota /messages
         conversationId,
+        userId,
         text,
       });
 
