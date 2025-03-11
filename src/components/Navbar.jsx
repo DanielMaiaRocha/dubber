@@ -65,7 +65,7 @@ const Navbar = () => {
                   Bookings
                 </Link>
                 <Link
-                  to={"/chat"}
+                  to={"/messages"}
                   className="text-gray-700 hover:text-gray-500 text-lg font-semibold transition duration-300 ease-in-out"
                 >
                   Chat

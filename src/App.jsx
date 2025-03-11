@@ -12,15 +12,16 @@ import MyProfile from "./pages/MyProfile";
 import CardPage from "./pages/CardPage";
 import { useEffect } from "react";
 import MyCardPage from "./pages/MyCardPage";
+import MessagesPage from "./pages/MessagesPage";
+
+import ChatPage from "./components/ChatPag";
 
 function App() {
   const { user } = useUserStore();
 
-  const checkAuth = useUserStore((state) => state.checkAuth);
-
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    useUserStore.getState().checkAuth(); // Chamando diretamente evita re-render desnecessário
+  }, []);
   return (
     <div>
       <Routes>
@@ -31,6 +32,8 @@ function App() {
         <Route path="/mainPage" element={<MainPage />} />
         <Route path="/card/:id" element={<CardPage />} />
         <Route path="/myCard" element ={<MyCardPage />} />
+        <Route path="/messages" element ={<MessagesPage />} />
+        <Route path="/chat/:id" element ={<ChatPage />} />
       </Routes>
       <Toaster />
     </div>

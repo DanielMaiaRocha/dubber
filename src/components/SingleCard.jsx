@@ -76,7 +76,7 @@ const SingleCard = () => {
           )}
 
           <h2 className="font-semibold text-lg">About Me</h2>
-          <p>{shortDesc || "No description available."}</p>
+          <p>{desc || "No description available."}</p>
 
           <div className="seller border border-gray-300 rounded-sm p-4">
             <h2 className="mb-4 font-semibold">About The Professional</h2>
@@ -131,7 +131,7 @@ const SingleCard = () => {
             <h3>Let&apos;s Talk!</h3>
             <h2>${price || 0}/hr</h2>
           </div>
-          <p>{desc || "No description available."}</p>
+          <p>{shortDesc || "No description available."}</p>
           <div className="details">
             <div className="item">
               <img src="/images/clock.png" alt="clock" width={25} height={25} />

@@ -5,28 +5,36 @@ import { toast } from "react-hot-toast";
 
 const MyCard = () => {
   const [activeTab, setActiveTab] = useState("account-general");
-  const [userData, setUserData] = useState({
-    name: "",
-    email: "",
-    country: "",
-    language: "",
-    profilePic: "",
+  const [userData, setUserData] = useState(null);
+
+  const { selectedCard, fetchCardById, createCard, loading } = useCardStore();
+
+  const [cardData, setCardData] = useState({
+    role: "",
+    shortDesc: "",
+    desc: "",
+    price: "",
   });
 
-  const { createCard, loading } = useCardStore();
+  const roles = [
+    "Dubbing Actor",
+    "Translator",
+    "Dubbing Director",
+    "Project Manager",
+    "Dubbing Operator",
+  ];
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const response = await axios.get("/auth/profile");
         const user = response.data;
-        setUserData({
-          name: user.name,
-          email: user.email,
-          country: user.country || "",
-          language: user.lang || "",
-          profilePic: user.profilePic || "",
-        });
+
+        setUserData(user);
+
+        if (user._id) {
+          await fetchCardById(user._id); // Busca o card do usuário
+        }
       } catch (error) {
         toast.error("Failed to load user data.");
       }
@@ -35,41 +43,42 @@ const MyCard = () => {
     fetchUserData();
   }, []);
 
-  const handleTabClick = (tab) => setActiveTab(tab);
+  useEffect(() => {
+    if (selectedCard) {
+      setCardData({
+        role: selectedCard.role || "",
+        shortDesc: selectedCard.shortDesc || "",
+        desc: selectedCard.desc || "",
+        price: selectedCard.price || "",
+      });
+    }
+  }, [selectedCard]);
 
   const handleSaveChanges = async () => {
-    const role = document.getElementById("role").value.trim();
-    const desc = document.getElementById("desc").value.trim();
-    const shortDesc = document.getElementById("shortDesc").value.trim();
-    const price = parseFloat(document.getElementById("price").value);
-
-    if (!role || !desc || !shortDesc || isNaN(price) || !userData.country || !userData.language) {
+    if (!cardData.role || !cardData.desc || !cardData.shortDesc || isNaN(cardData.price) || !userData?.country || !userData?.lang) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
-    const cardData = {
+    const newCardData = {
       title: userData.name,
-      cover: userData.profilePic,
-      role,
-      desc,
-      shortDesc,
-      price,
+      cover: userData.profilePic || "",
+      ...cardData,
       country: userData.country,
-      lang: userData.language,
+      lang: userData.lang,
       totalStars: 0,
       starNumber: 0,
     };
 
     try {
-      await createCard(cardData);
-      toast.success("Card created successfully!");
+      await createCard(newCardData);
+      toast.success("Card saved successfully!");
     } catch (error) {
       toast.error("An error occurred while saving the card.");
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading || !userData) return <p>Loading...</p>;
 
   return (
     <main className="flex justify-center items-center -mt-80 ml-32">
@@ -83,7 +92,7 @@ const MyCard = () => {
                   className={`list-group-item cursor-pointer rounded p-4 m-2 mb-2 w-56 ${
                     activeTab === "account-general" ? "font-bold text-white bg-[#17a2b8]" : ""
                   }`}
-                  onClick={() => handleTabClick("account-general")}
+                  onClick={() => setActiveTab("account-general")}
                 >
                   General
                 </a>
@@ -105,21 +114,37 @@ const MyCard = () => {
                     </div>
                     <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold">Role</span>
-                      <select id="role" className="border rounded-md w-60 p-2 bg-white">
-                        <option value="Dubbing Actor">Dubbing Actor</option>
-                        <option value="Translator">Translator</option>
-                        <option value="Dubbing Director">Dubbing Director</option>
-                        <option value="Project Manager">Project Manager</option>
-                        <option value="Dubbing Operator">Dubbing Operator</option>
+                      <select
+                        id="role"
+                        className="border rounded-md w-60 p-2 bg-white"
+                        value={cardData.role}
+                        onChange={(e) => setCardData({ ...cardData, role: e.target.value })}
+                      >
+                        {roles.map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold mb-2">Short Description</span>
-                      <input type="text" id="shortDesc" className="border rounded-md w-96 p-2" />
+                      <input
+                        type="text"
+                        id="shortDesc"
+                        className="border rounded-md w-96 p-2"
+                        value={cardData.shortDesc}
+                        onChange={(e) => setCardData({ ...cardData, shortDesc: e.target.value })}
+                      />
                     </div>
                     <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold mb-2">Description</span>
-                      <textarea id="desc" className="resize-none h-60 w-96 border rounded-md p-2"></textarea>
+                      <textarea
+                        id="desc"
+                        className="resize-none h-60 w-96 border rounded-md p-2"
+                        value={cardData.desc}
+                        onChange={(e) => setCardData({ ...cardData, desc: e.target.value })}
+                      />
                     </div>
                     <div className="flex flex-col mb-2">
                       <span className="text-lg font-bold">Price</span>
@@ -128,6 +153,8 @@ const MyCard = () => {
                         type="number"
                         className="border rounded-md w-60 p-2 bg-white"
                         placeholder="Price per hour"
+                        value={cardData.price}
+                        onChange={(e) => setCardData({ ...cardData, price: e.target.value })}
                       />
                     </div>
                     <div className="flex flex-col mb-2">
@@ -144,7 +171,7 @@ const MyCard = () => {
                       <input
                         id="language"
                         className="border rounded-md w-60 p-2 bg-white"
-                        value={userData.language}
+                        value={userData.lang}
                         disabled
                       />
                     </div>
