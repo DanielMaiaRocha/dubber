@@ -101,7 +101,7 @@ export const useChatStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const { data } = await axios.get(`/messages/${conversationId}`); // Usando a rota /messages/:id
+      const { data } = await axios.get(`/conversations/messages/${conversationId}`); // Usando a rota /messages/:id
       set({ messages: data, loading: false });
     } catch (error) {
       console.error("Erro ao obter mensagens:", error);
@@ -115,11 +115,11 @@ export const useChatStore = create((set, get) => ({
       set({ loading: true, error: null });
 
       // Busca a conversa
-      const conversationResponse = await axios.get(`/messages/${conversationId}`);
+      const conversationResponse = await axios.get(`/conversations/messages/${conversationId}`);
       set({ conversation: conversationResponse.data });
 
       // Busca as mensagens
-      const messagesResponse = await axios.get(`/messages/${conversationId}`); // Usando a rota /messages/:id
+      const messagesResponse = await axios.get(`/conversations/messages/${conversationId}`); // Usando a rota /messages/:id
       set({ messages: messagesResponse.data });
 
       set({ loading: false });
@@ -130,11 +130,11 @@ export const useChatStore = create((set, get) => ({
   },
 
   // Enviar uma mensagem
-  sendMessage: async (conversationId,userId, text) => {
+  sendMessage: async (conversationId, userId, text) => {
     try {
       set({ loading: true, error: null });
 
-      const { data } = await axios.post(`/messages`, { // Usando a rota /messages
+      const { data } = await axios.post(`/conversations/messages`, { // Usando a rota /messages
         conversationId,
         userId,
         text,
