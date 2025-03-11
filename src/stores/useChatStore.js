@@ -134,7 +134,7 @@ export const useChatStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const { data } = await axios.post("/messages", { // Usando a rota /messages
+      const { data } = await axios.post(`/messages/${conversationId}`, { // Usando a rota /messages
         conversationId,
         text,
       });
