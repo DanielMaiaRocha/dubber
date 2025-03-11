@@ -101,7 +101,7 @@ export const useChatStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const { data } = await axios.get(`/conversations/messages/${conversationId}`); // Usando a rota /messages/:id
+      const { data } = await axios.get(`/messages/${conversationId}`); // Usando a rota /messages/:id
       set({ messages: data, loading: false });
     } catch (error) {
       console.error("Erro ao obter mensagens:", error);
