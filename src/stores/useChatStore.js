@@ -115,11 +115,11 @@ export const useChatStore = create((set, get) => ({
       set({ loading: true, error: null });
 
       // Busca a conversa
-      const conversationResponse = await axios.get(`/conversations/messages/${conversationId}`);
+      const conversationResponse = await axios.get(`/messages/${conversationId}`);
       set({ conversation: conversationResponse.data });
 
       // Busca as mensagens
-      const messagesResponse = await axios.get(`/conversations/messages/${conversationId}`); // Usando a rota /messages/:id
+      const messagesResponse = await axios.get(`/messages/${conversationId}`); // Usando a rota /messages/:id
       set({ messages: messagesResponse.data });
 
       set({ loading: false });
