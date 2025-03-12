@@ -8,9 +8,14 @@ export const useChatStore = create((set, get) => ({
   conversations: [],
   loading: false,
   error: null,
-  typing: false,
+  typing: false, // Estado para rastrear se o usuário está digitando
   sseConnection: null,
   hasFetched: false,
+
+  // Função para definir o estado de "digitando"
+  setTyping: (conversationId, isTyping) => {
+    set({ typing: isTyping });
+  },
 
   // Conectar ao SSE
   connectSSE: (conversationId) => {
@@ -101,7 +106,7 @@ export const useChatStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const { data } = await axios.get(`/messages/${conversationId}`); // Usando a rota /messages/:id
+      const { data } = await axios.get(`/messages/${conversationId}`);
       set({ messages: data, loading: false });
     } catch (error) {
       console.error("Erro ao obter mensagens:", error);
@@ -119,7 +124,7 @@ export const useChatStore = create((set, get) => ({
       set({ conversation: conversationResponse.data });
 
       // Busca as mensagens
-      const messagesResponse = await axios.get(`/messages/${conversationId}`); // Usando a rota /messages/:id
+      const messagesResponse = await axios.get(`/messages/${conversationId}`);
       set({ messages: messagesResponse.data });
 
       set({ loading: false });
@@ -134,7 +139,7 @@ export const useChatStore = create((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const { data } = await axios.post(`/conversations/messages`, { // Usando a rota /messages
+      const { data } = await axios.post(`/conversations/message`, {
         conversationId,
         userId,
         text,

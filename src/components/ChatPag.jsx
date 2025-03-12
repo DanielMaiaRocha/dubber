@@ -13,7 +13,7 @@ const ChatPag = () => {
     messages,
     fetchChatData,
     sendMessage,
-    setTyping,
+    setTyping, // Certifique-se de que setTyping está sendo desestruturado corretamente
     typing,
     loading,
     error,
@@ -45,9 +45,9 @@ const ChatPag = () => {
     if (!newMessage.trim()) return;
     setIsSending(true);
     try {
-      await sendMessage(id, newMessage);
+      await sendMessage(id, user._id, newMessage); // Envia o userId junto com a mensagem
       setNewMessage("");
-      setTyping(id, false);
+      setTyping(id, false); // Define o estado de "digitando" como falso após enviar a mensagem
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
     } finally {
@@ -57,7 +57,7 @@ const ChatPag = () => {
 
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
-    setTyping(id, e.target.value.trim() !== "");
+    setTyping(id, e.target.value.trim() !== ""); // Define o estado de "digitando" com base no conteúdo da mensagem
   };
 
   const handleKeyPress = (e) => {
