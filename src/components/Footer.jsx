@@ -24,7 +24,7 @@ const footerLinks = [
 
 const Footer = () => {
   return (
-    <footer className='bg-gray-900 text-white'>
+    <footer className='bg-gray-900 text-white mt-[30rem]'>
         <div className='md:flex md:justify-between md:items-center sm:px-12 px-4 py-7'>
             <div className='md:flex-1 flex justify-center'>
                 <img 

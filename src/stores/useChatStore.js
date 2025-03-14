@@ -11,6 +11,7 @@ export const useChatStore = create((set, get) => ({
   typing: false, // Estado para rastrear se o usuário está digitando
   sseConnection: null,
   hasFetched: false,
+  chatDetails: null, // Novo estado para armazenar os detalhes do chat
 
   // Função para definir o estado de "digitando"
   setTyping: (conversationId, isTyping) => {
@@ -19,29 +20,36 @@ export const useChatStore = create((set, get) => ({
 
   // Conectar ao SSE
   connectSSE: (conversationId) => {
-    const sseConnection = new EventSource(
-      `${import.meta.env.VITE_API_BASE_URL}/conversations/sse?conversationId=${conversationId}`
-    );
+    // Fecha a conexão SSE existente, se houver
+    if (useChatStore.getState().eventSource) {
+      useChatStore.getState().eventSource.close();
+    }
 
-    sseConnection.onmessage = (event) => {
-      const newMessage = JSON.parse(event.data);
-      set((state) => ({ messages: [...state.messages, newMessage] }));
+    // Cria uma nova conexão SSE
+    const eventSource = new EventSource(`/conversations/sse?conversationId=${conversationId}`);
+
+    // Configura o listener para mensagens recebidas
+    eventSource.onmessage = (event) => {
+      const newMessage = JSON.parse(event.data); // Converte o evento para JSON
+      set((state) => ({ messages: [...state.messages, newMessage] })); // Atualiza o estado
     };
 
-    sseConnection.onerror = () => {
-      console.error("Erro na conexão SSE.");
-      sseConnection.close();
+    // Configura o listener para erros
+    eventSource.onerror = (error) => {
+      console.error("Erro na conexão SSE:", error);
+      eventSource.close(); // Fecha a conexão em caso de erro
     };
 
-    set({ sseConnection });
+    // Armazena a referência do eventSource no estado
+    set({ eventSource });
   },
 
   // Desconectar do SSE
   disconnectSSE: () => {
-    const { sseConnection } = get();
-    if (sseConnection) {
-      sseConnection.close();
-      set({ sseConnection: null });
+    const eventSource = useChatStore.getState().eventSource;
+    if (eventSource) {
+      eventSource.close(); // Fecha a conexão SSE
+      set({ eventSource: null }); // Remove a referência
     }
   },
 
@@ -149,6 +157,22 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
       set({ error: "Erro ao enviar mensagem.", loading: false });
+    }
+  },
+
+  // Nova função: Buscar detalhes do chat
+  fetchChatDetails: async (conversationId) => {
+    try {
+      set({ loading: true, error: null });
+
+      // Faz a requisição para a nova rota
+      const { data } = await axios.get(`/conversations/chat-details/${conversationId}`);
+
+      // Atualiza o estado com os detalhes do chat
+      set({ chatDetails: data, loading: false });
+    } catch (error) {
+      console.error("Erro ao buscar detalhes do chat:", error);
+      set({ error: "Erro ao buscar detalhes do chat.", loading: false });
     }
   },
 }));
