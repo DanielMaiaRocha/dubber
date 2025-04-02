@@ -1,15 +1,13 @@
 import React from 'react'
 import Navbar from '../components/Navbar'
-import ProfileFuncs from '../components/ProfileFuncs'
-import ProfileHero from '../components/ProfileHero'
+import Profile from '../components/ProfileHero'
 import Footer from '../components/Footer'
 
 const MyProfile = () => {
   return (
     <div>
         <Navbar />
-        <ProfileFuncs />
-        <ProfileHero />
+        <Profile />
         <Footer />
     </div>
   )

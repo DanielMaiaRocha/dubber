@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useUserStore } from "../stores/useUserStore";
 import axios from "../lib/axios";
 
-const Navbar = () => {
+const   Navbar = () => {
   const { user, logout, setUser } = useUserStore();
   const isAdmin = user?.role === "admin";
 

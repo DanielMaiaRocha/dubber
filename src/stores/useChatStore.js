@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import axios from "../lib/axios";
-import { useUserStore } from "./useUserStore";
+import { io } from "socket.io-client";
+
+// Configuração do Socket.io
+const socket = io("http://localhost:8800", {
+  withCredentials: true,
+  autoConnect: false,
+});
 
 export const useChatStore = create((set, get) => ({
   conversation: null,
@@ -8,171 +14,198 @@ export const useChatStore = create((set, get) => ({
   conversations: [],
   loading: false,
   error: null,
-  typing: false, // Estado para rastrear se o usuário está digitando
-  sseConnection: null,
+  typing: false,
+  socket: socket,
   hasFetched: false,
-  chatDetails: null, // Novo estado para armazenar os detalhes do chat
+  chatDetails: null,
 
-  // Função para definir o estado de "digitando"
-  setTyping: (conversationId, isTyping) => {
-    set({ typing: isTyping });
-  },
-
-  // Conectar ao SSE
-  connectSSE: (conversationId) => {
-    // Fecha a conexão SSE existente, se houver
-    if (useChatStore.getState().eventSource) {
-      useChatStore.getState().eventSource.close();
-    }
-
-    // Cria uma nova conexão SSE
-    const eventSource = new EventSource(`/conversations/sse?conversationId=${conversationId}`);
-
-    // Configura o listener para mensagens recebidas
-    eventSource.onmessage = (event) => {
-      const newMessage = JSON.parse(event.data); // Converte o evento para JSON
-      set((state) => ({ messages: [...state.messages, newMessage] })); // Atualiza o estado
-    };
-
-    // Configura o listener para erros
-    eventSource.onerror = (error) => {
-      console.error("Erro na conexão SSE:", error);
-      eventSource.close(); // Fecha a conexão em caso de erro
-    };
-
-    // Armazena a referência do eventSource no estado
-    set({ eventSource });
-  },
-
-  // Desconectar do SSE
-  disconnectSSE: () => {
-    const eventSource = useChatStore.getState().eventSource;
-    if (eventSource) {
-      eventSource.close(); // Fecha a conexão SSE
-      set({ eventSource: null }); // Remove a referência
+  // --- Conexão WebSocket --- //
+  connectSocket: () => {
+    const { socket } = get();
+    if (!socket.connected) {
+      socket.connect();
     }
   },
 
-  // Buscar todas as conversas do usuário
+  disconnectSocket: () => {
+    const { socket } = get();
+    if (socket.connected) {
+      socket.disconnect();
+    }
+  },
+
+  joinConversation: (conversationId) => {
+    const { socket } = get();
+    socket.emit("joinConversation", conversationId);
+  },
+
+  leaveConversation: (conversationId) => {
+    const { socket } = get();
+    socket.emit("leaveConversation", conversationId);
+  },
+
+  // --- Listeners WebSocket --- //
+  setupSocketListeners: () => {
+    const { socket } = get();
+
+    socket.on("newMessage", (message) => {
+      set((state) => ({
+        messages: [...state.messages, message],
+        conversations: state.conversations.map((conv) =>
+          conv._id === message.conversationId
+            ? { ...conv, lastMessage: message.text, updatedAt: new Date() }
+            : conv
+        ),
+      }));
+    });
+
+    socket.on("conversationUpdated", (update) => {
+      set({
+        conversation: { ...get().conversation, ...update },
+        conversations: get().conversations.map((conv) =>
+          conv._id === update._id ? { ...conv, ...update } : conv
+        ),
+      });
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Erro no WebSocket:", err.message);
+      set({ error: "Erro na conexão em tempo real" });
+    });
+  },
+
+  // --- Funções de API --- //
   fetchConversations: async () => {
-    const { hasFetched, loading } = get();
-
-    if (hasFetched || loading) {
-      console.log("Conversas já carregadas ou carregamento em andamento.");
-      return;
-    }
-
     try {
       set({ loading: true, error: null });
-
       const { data } = await axios.get("/conversations/chats");
-      set({ conversations: data, loading: false, hasFetched: true });
+
+      const populatedConversations = await Promise.all(
+        data.map(async (conv) => {
+          if (
+            !conv.participants ||
+            conv.participants.some((p) => typeof p === "string")
+          ) {
+            const { data: fullConv } = await axios.get(
+              `/conversations/${conv._id}`
+            );
+            return fullConv;
+          }
+          return conv;
+        })
+      );
+
+      set({
+        conversations: populatedConversations,
+        loading: false,
+        hasFetched: true,
+      });
     } catch (error) {
       console.error("Erro ao obter conversas:", error);
-      set({ error: "Erro ao obter conversas.", loading: false });
-    }
-  },
-
-  // Resetar o estado de fetch
-  resetFetchState: () => {
-    set({ hasFetched: false });
-  },
-
-  // Criar um novo chat
-  createChat: async (cardId) => {
-    try {
-      const user = useUserStore.getState().user;
-      if (!user || !user._id) throw new Error("Usuário não autenticado.");
-
-      if (!cardId) {
-        throw new Error("ID do card é obrigatório.");
-      }
-
-      const response = await axios.post("/conversations/chat", {
-        participant: cardId,
+      set({
+        error: error.response?.data?.message || "Erro ao carregar conversas",
+        loading: false,
       });
-
-      console.log("Chat criado:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error("Erro ao criar chat:", error);
-
-      let errorMessage = "Erro ao criar chat.";
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      set({ error: errorMessage });
-      throw error;
     }
   },
 
-  // Obter mensagens de uma conversa
   getMessages: async (conversationId) => {
     try {
       set({ loading: true, error: null });
-
       const { data } = await axios.get(`/messages/${conversationId}`);
       set({ messages: data, loading: false });
     } catch (error) {
       console.error("Erro ao obter mensagens:", error);
-      set({ error: "Erro ao obter mensagens.", loading: false });
+      set({
+        error: error.response?.data?.message || "Erro ao carregar mensagens",
+        loading: false,
+      });
     }
   },
 
-  // Buscar dados do chat (conversa + mensagens)
-  fetchChatData: async (conversationId) => {
-    try {
-      set({ loading: true, error: null });
-
-      // Busca a conversa
-      const conversationResponse = await axios.get(`/messages/${conversationId}`);
-      set({ conversation: conversationResponse.data });
-
-      // Busca as mensagens
-      const messagesResponse = await axios.get(`/messages/${conversationId}`);
-      set({ messages: messagesResponse.data });
-
-      set({ loading: false });
-    } catch (error) {
-      console.error("Erro ao buscar dados do chat:", error);
-      set({ error: "Erro ao buscar dados do chat.", loading: false });
-    }
-  },
-
-  // Enviar uma mensagem
   sendMessage: async (conversationId, userId, text) => {
     try {
       set({ loading: true, error: null });
-
-      const { data } = await axios.post(`/conversations/message`, {
+      const { data } = await axios.post("/conversations/message", {
         conversationId,
         userId,
         text,
       });
-
-      set((state) => ({ messages: [...state.messages, data], loading: false }));
+      return data;
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
-      set({ error: "Erro ao enviar mensagem.", loading: false });
+      set({
+        error: error.response?.data?.message || "Erro ao enviar mensagem",
+        loading: false,
+      });
+      throw error;
     }
   },
 
-  // Nova função: Buscar detalhes do chat
+  createChat: async (participantId) => {
+    try {
+      if (!participantId) {
+        throw new Error("ID do participante é obrigatório");
+      }
+  
+      // Obter o token do usuário logado
+      const token = localStorage.getItem('acessToken') || 
+                   sessionStorage.getItem('acessToken');
+  
+      if (!token) {
+        throw new Error("Usuário não autenticado");
+      }
+  
+      const response = await axios.post("/conversations/chat", {
+        participant: participantId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (!response.data?._id) {
+        throw new Error("Resposta inválida do servidor");
+      }
+  
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao criar chat:", error);
+      const errorMessage = error.response?.data?.message || 
+                         error.message || 
+                         "Erro ao criar conversa";
+      throw new Error(errorMessage);
+    }
+  },
+
   fetchChatDetails: async (conversationId) => {
     try {
       set({ loading: true, error: null });
-
-      // Faz a requisição para a nova rota
-      const { data } = await axios.get(`/conversations/chat-details/${conversationId}`);
-
-      // Atualiza o estado com os detalhes do chat
+      const { data } = await axios.get(
+        `/conversations/chat-details/${conversationId}`
+      );
       set({ chatDetails: data, loading: false });
     } catch (error) {
-      console.error("Erro ao buscar detalhes do chat:", error);
-      set({ error: "Erro ao buscar detalhes do chat.", loading: false });
+      console.error("Erro ao buscar detalhes:", error);
+      set({
+        error: error.response?.data?.message || "Erro ao buscar detalhes",
+        loading: false,
+      });
     }
+  },
+
+  // --- Utilitários --- //
+  setTyping: (isTyping) => {
+    set({ typing: isTyping });
+  },
+
+  resetChat: () => {
+    set({
+      messages: [],
+      conversation: null,
+      chatDetails: null,
+      typing: false,
+    });
   },
 }));

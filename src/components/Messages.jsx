@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUserStore } from "../stores/useUserStore";
 import { useChatStore } from "../stores/useChatStore";
@@ -10,19 +10,9 @@ const Messages = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // Memoiza a função fetchConversations para evitar recriação
-  const memoizedFetchConversations = useCallback(() => {
-    if (user?._id) {
-      fetchConversations();
-    }
-  }, [user, fetchConversations]);
-
   useEffect(() => {
-    // Verifica se já há conversas carregadas para evitar chamadas repetidas
-    if (conversations.length === 0) {
-      memoizedFetchConversations();
-    }
-  }, [memoizedFetchConversations, conversations.length]);
+    fetchConversations();
+  }, [fetchConversations]);
 
   const totalPages = Math.ceil(conversations.length / pageSize);
   const displayedConversations = conversations.slice(
@@ -30,17 +20,40 @@ const Messages = () => {
     currentPage * pageSize
   );
 
-  // Função para encontrar o outro participante
-  const getOtherParticipant = (participants) => {
-    if (!participants || participants.length === 0) return null;
-    return participants.find((participant) => participant._id !== user._id);
+  // Função mais robusta para encontrar o outro participante
+  const getOtherParticipant = (conversation) => {
+    if (!conversation?.participants) return null;
+
+    // Verifica se os participants já estão populados
+    const isPopulated = conversation.participants.some(
+      (p) => typeof p !== "string"
+    );
+
+    if (!isPopulated) {
+      console.warn("Participants não populados:", conversation);
+      return null;
+    }
+
+    return conversation.participants.find(
+      (participant) => participant._id !== user._id
+    );
+  };
+
+  // Formatação segura da data
+  const formatDate = (dateString) => {
+    if (!dateString) return "Indisponível";
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return "Indisponível";
+    }
   };
 
   return (
     <div className="mt-72 flex justify-center mb-96">
       <div className="w-full max-w-5xl p-8 bg-white shadow-md rounded-lg">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Mensagens</h1>
+          <h1 className="text-2xl font-bold">Histórico de Conversas</h1>
           <Link
             to="/confirmations"
             className="px-3 py-1 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-500 hover:text-white"
@@ -55,17 +68,17 @@ const Messages = () => {
           </div>
         ) : error ? (
           <p className="text-center text-red-500">
-            Erro ao carregar conversas.
+            Erro ao carregar conversas: {error}
           </p>
         ) : displayedConversations.length === 0 ? (
           <p className="text-center text-gray-500">
-            Nenhuma conversa ativa no momento
+            Nenhuma conversa encontrada
           </p>
         ) : (
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b text-left">
-                <th className="p-3">Participante</th>
+                <th className="p-3">Contato</th>
                 <th className="p-3">Última Mensagem</th>
                 <th className="p-3">Data</th>
                 <th className="p-3">Ação</th>
@@ -73,7 +86,9 @@ const Messages = () => {
             </thead>
             <tbody>
               {displayedConversations.map((chat) => {
-                const otherParticipant = getOtherParticipant(chat.participants);
+                const otherParticipant = getOtherParticipant(chat);
+                const lastMessage = chat.lastMessage || "---";
+
                 return (
                   <tr key={chat._id} className="border-b hover:bg-gray-100">
                     <td className="p-3 flex items-center">
@@ -81,26 +96,27 @@ const Messages = () => {
                         src={
                           otherParticipant?.profilePic ||
                           "/images/default-avatar.png"
-                        } // Usando cover em vez de profileImage
+                        }
                         alt="Avatar"
                         className="rounded-full w-10 h-10 object-cover mr-3"
+                        onError={(e) => {
+                          e.target.src = "/images/default-avatar.png";
+                        }}
                       />
-                      <span>{otherParticipant?.name || "Sem Nome"}</span>
+                      <span>{otherParticipant?.name || "Usuário"}</span>
                     </td>
                     <td className="p-3 text-gray-600">
-                      {chat.lastMessage || "Sem mensagens"}
+                      {typeof lastMessage === "string"
+                        ? lastMessage.substring(0, 30) +
+                          (lastMessage.length > 30 ? "..." : "")
+                        : "---"}
                     </td>
-                    <td className="p-3">
-                      {chat.lastMessage?.createdAt
-                        ? new Date(
-                            chat.lastMessage.createdAt
-                          ).toLocaleDateString()
-                        : "Indisponível"}
-                    </td>
+                    <td className="p-3">{formatDate(chat.updatedAt)}</td>
                     <td className="p-3">
                       <Link
                         to={`/chat/${chat._id}`}
                         className="text-blue-500 hover:text-blue-700 flex items-center"
+                        title="Abrir conversa"
                       >
                         <MessageCircle size={20} />
                       </Link>
@@ -112,6 +128,7 @@ const Messages = () => {
           </table>
         )}
 
+        {/* Paginação permanece igual */}
         {totalPages > 1 && (
           <div className="flex justify-center items-center mt-5">
             <button

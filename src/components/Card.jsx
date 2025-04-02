@@ -1,11 +1,23 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarMonth, Chat, LocationOn, Language, Star } from "@mui/icons-material";
-import { Button, CircularProgress } from "@mui/material";
+import { Chat, Star, Language, Place } from "@mui/icons-material";
+import { Button, CircularProgress, Chip, Stack } from "@mui/material";
 import { useChatStore } from "../stores/useChatStore";
 import { useUserStore } from "../stores/useUserStore";
+import countryFlagEmoji from "country-flag-emoji";
 
-function Card({ id, cover, title, role, description, country, lang, price, totalStars, starNumber, userId }) {
+function Card({
+  id, // ID do usuário dono do card
+  cover,
+  title,
+  description,
+  price,
+  totalStars,
+  starNumber,
+  role,
+  lang,
+  country,
+}) {
   const navigate = useNavigate();
   const { createChat, loading } = useChatStore();
   const { user } = useUserStore();
@@ -19,81 +31,106 @@ function Card({ id, cover, title, role, description, country, lang, price, total
       return alert("Você precisa estar autenticado para iniciar um chat.");
     }
 
-    console.log("Chamando createChat com cardId:", id); // Debug
+    if (user._id === id) {
+      return alert("Você não pode iniciar um chat consigo mesmo.");
+    }
 
     try {
-      const chatData = await createChat(id); // Passa o cardId como participant
-      if (chatData && chatData._id) {
+      const chatData = await createChat(id);
+
+      if (chatData?._id) {
         navigate(`/chat/${chatData._id}`);
       } else {
-        throw new Error("Erro ao criar chat: Dados do chat inválidos.");
+        throw new Error("O servidor não retornou os dados do chat");
       }
     } catch (error) {
-      console.error("Erro ao criar chat:", error);
-      alert(error.message || "Erro ao criar chat. Tente novamente.");
+      console.error("Erro completo:", error);
+      alert(`Falha ao criar chat: ${error.message}`);
     }
   };
 
+  // Obter informações do país
+  const countryInfo = countryFlagEmoji.get(country);
+  const countryFlag = countryInfo?.emoji || "🌍";
+  const countryName = countryInfo?.name || country;
+
   return (
-    <div className="w-full md:w-[70%] max-h-80 md:flex mx-auto my-auto rounded-xl border overflow-hidden shadow-md bg-white hover:shadow-lg transition">
+    <div className="relative w-full max-w-md mx-auto bg-white text-gray-900 rounded-xl border overflow-hidden shadow-md hover:shadow-lg transition hover:scale-[1.02] duration-200">
+      {/* Imagem de Capa */}
       <div
-        className="w-full md:w-96 h-52 md:h-80 bg-cover bg-center cursor-pointer"
+        className="w-full h-48 bg-cover bg-center"
         style={{ backgroundImage: `url(${cover})` }}
-        onClick={() => navigate(`/card/${id}`)}
       ></div>
 
-      <div className="flex flex-col justify-between p-4 text-black flex-1">
+      {/* Conteúdo do Card */}
+      <div className="p-4">
+        {/* Título e Role */}
+        <div className="mb-2">
+          <h5 className="text-lg font-semibold">{title}</h5>
+          {role && (
+            <Chip
+              label={role}
+              size="small"
+              className="mt-1 bg-blue-100 text-blue-800"
+              sx={{ fontSize: "0.75rem" }}
+            />
+          )}
+        </div>
+
+        {/* Descrição */}
+        <p className="text-sm text-gray-500 line-clamp-3 mb-3">{description}</p>
+
+        {/* Country e Lang */}
+        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+          {country && (
+            <div className="flex items-center bg-gray-50 rounded-full px-3 py-1">
+              <Place fontSize="small" className="text-gray-500 mr-1" />
+              <span className="text-sm font-medium text-gray-700">
+                {country}
+              </span>
+            </div>
+          )}
+
+          {lang && (
+            <div className="flex items-center bg-gray-50 rounded-full px-3 py-1">
+              <Language fontSize="small" className="text-gray-500 mr-1" />
+              <span className="text-sm font-medium text-gray-700">{lang}</span>
+            </div>
+          )}
+        </Stack>
+
+        {/* Avaliação e Preço */}
         <div className="flex justify-between items-center">
-          <h5
-            className="text-2xl font-semibold cursor-pointer hover:underline"
-            onClick={() => navigate(`/card/${id}`)}
-          >
-            {title}
-          </h5>
-          <h5 className="text-xl font-semibold text-[#17a2b8]">
-            ${price}
-            <span className="text-gray-600 font-normal"> /hr</span>
-          </h5>
-        </div>
-
-        <div className="flex justify-between items-center mt-2">
-          <h6 className="text-sm font-semibold text-gray-700">{role}</h6>
-          <div className="flex items-center gap-1 text-[#ffc108]">
+          <div className="flex items-center gap-1 text-yellow-500">
             <Star fontSize="small" />
-            <span className="font-bold">{rating.toFixed(1)}</span>
+            <span className="text-sm font-bold">{rating.toFixed(1)}</span>
+            <span className="text-gray-500 text-sm">({starNumber})</span>
           </div>
+          <p className="text-lg font-bold text-gray-800">R$ {price}</p>
         </div>
 
-        <p className="text-gray-600 line-clamp-2 mt-2">{description}</p>
-
-        <div className="mt-4 space-y-2 text-gray-700">
-          <p className="flex items-center gap-2">
-            <Language fontSize="small" /> {lang}
-          </p>
-          <p className="flex items-center gap-2">
-            <LocationOn fontSize="small" /> {country}
-          </p>
-        </div>
-
-        <div className="flex gap-4 mt-4">
+        {/* Botão de Chat */}
+        <div className="mt-4">
           <Button
             variant="contained"
-            color="info"
-            className="w-full"
-            startIcon={<CalendarMonth />}
-            onClick={() => alert("Funcionalidade de agendamento não implementada.")}
-          >
-            Appointment
-          </Button>
-
-          <Button
-            variant="outlined"
-            className="w-full"
+            fullWidth
             startIcon={<Chat />}
             onClick={handleCreateChat}
             disabled={loading}
+            sx={{
+              backgroundColor: "#17a2b8",
+              "&:hover": {
+                backgroundColor: "#2daabd",
+              },
+              py: 1.5,
+              borderRadius: "8px",
+            }}
           >
-            {loading ? <CircularProgress size={20} /> : "Chat"}
+            {loading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              "Iniciar Chat"
+            )}
           </Button>
         </div>
       </div>

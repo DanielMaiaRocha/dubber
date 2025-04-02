@@ -1,15 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send } from "lucide-react";
 import { motion } from "framer-motion";
 import { useUserStore } from "../stores/useUserStore";
 import { useChatStore } from "../stores/useChatStore";
 
 const ChatPag = () => {
-  const { id } = useParams();
+  const { id: conversationId } = useParams();
   const { user } = useUserStore();
   const {
-    conversation,
     messages,
     fetchChatData,
     sendMessage,
@@ -17,38 +16,50 @@ const ChatPag = () => {
     typing,
     loading,
     error,
-    connectSSE,
-    disconnectSSE,
-    fetchChatDetails,
     chatDetails,
+    joinConversation,
+    leaveConversation,
+    connectSocket,
+    disconnectSocket,
+    setupSocketListeners,
   } = useChatStore();
 
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef(null);
   const [isSending, setIsSending] = useState(false);
 
+  // --- Efeitos para WebSocket --- //
   useEffect(() => {
-    if (id) {
-      fetchChatData(id);
-      connectSSE(id);
-      fetchChatDetails(id);
-    }
-    return () => disconnectSSE();
-  }, [id, fetchChatData, connectSSE, disconnectSSE, fetchChatDetails]);
+    if (conversationId) {
+      // Conecta ao WebSocket e configura listeners
+      connectSocket();
+      setupSocketListeners();
+      joinConversation(conversationId);
 
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      // Busca dados iniciais
+      fetchChatData(conversationId);
     }
+
+    return () => {
+      // Limpeza ao sair do componente
+      leaveConversation(conversationId);
+      disconnectSocket();
+    };
+  }, [conversationId, connectSocket, setupSocketListeners, joinConversation, leaveConversation, disconnectSocket, fetchChatData]);
+
+  // Rolagem automática para a última mensagem
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // --- Handlers --- //
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
     setIsSending(true);
     try {
-      await sendMessage(id, user._id, newMessage);
+      await sendMessage(conversationId, user._id, newMessage);
       setNewMessage("");
-      setTyping(id, false);
+      setTyping(conversationId, false);
     } catch (error) {
       console.error("Erro ao enviar mensagem:", error);
     } finally {
@@ -58,7 +69,7 @@ const ChatPag = () => {
 
   const handleTyping = (e) => {
     setNewMessage(e.target.value);
-    setTyping(id, e.target.value.trim() !== "");
+    setTyping(conversationId, e.target.value.trim() !== "");
   };
 
   const handleKeyPress = (e) => {
@@ -72,43 +83,31 @@ const ChatPag = () => {
     return conversation?.participants?.find((p) => p._id === userId);
   };
 
+  // --- Render (Layout IDÊNTICO ao original) --- //
   return (
     <div id="chat" className="mt-20 flex justify-center">
-      <div id="container" className="w-full md:w-[900px] m-4 md:m-12 bg-white p-6 rounded-lg shadow-lg">
-        <div className="flex items-center justify-between pb-4 border-b">
-          <Link to="/messages" className="text-gray-500 hover:text-gray-700 flex items-center">
-            <ArrowLeft size={20} className="mr-2" /> Voltar para mensagens
-          </Link>
-          <div className="flex items-center">
-            <img
-              src={chatDetails?.otherParticipant?.profilePic || "/images/default-avatar.png"}
-              alt="Foto de perfil"
-              className="rounded-full w-10 h-10 object-cover mr-3"
-              onError={(e) => {
-                e.target.src = "/images/default-avatar.png";
-              }}
-            />
-            <h2 className="text-lg font-semibold">
-              Conversa com {chatDetails?.otherParticipant?.name || "Carregando..."}
-            </h2>
-          </div>
-        </div>
+      <div id="container" className="w-[1300px] m-12">
+        <span id="breadcrums" className="flex flex-row gap-1 font-semibold text-md text-[#555] shadow-lg border border-gray-50 rounded p-2">
+          <Link to="/messages" className="hover:underline">Messages</Link>
+          <span>{'>'} {chatDetails?.otherParticipant?.name || "Loading..."}</span>
+        </span>
 
-        <div id="messages" className="my-8 p-4 flex flex-col gap-4 h-[400px] overflow-y-auto">
+        <div id="messages" className="my-8 mx-0 p-12 flex flex-col gap-12 h-[500px] overflow-y-scroll">
           {loading ? (
             <p className="text-center text-gray-500">Carregando mensagens...</p>
           ) : error ? (
             <p className="text-center text-red-500">Erro ao carregar mensagens.</p>
           ) : messages.length > 0 ? (
             messages.map((msg) => {
-              const isCurrentUser = msg.userId === user._id;
-              const sender = isCurrentUser ? user : getParticipantById(msg.userId);
+              const isCurrentUser = msg.senderId === user._id; // Note: Agora usa senderId (ajustado no modelo)
+              const sender = isCurrentUser ? user : getParticipantById(msg.senderId);
               const senderImage = sender?.profilePic || "/images/default-avatar.png";
 
               return (
                 <motion.div
                   key={msg._id}
-                  className={`flex gap-4 max-w-[80%] ${isCurrentUser ? "self-end flex-row-reverse" : ""}`}
+                  id="item"
+                  className={`flex gap-5 max-w-[600px] font-semibold ${isCurrentUser ? 'flex-row-reverse self-end' : ''}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
@@ -116,17 +115,14 @@ const ChatPag = () => {
                   <img
                     src={senderImage}
                     alt="Avatar"
-                    className="rounded-full w-10 h-10 object-cover"
+                    className="rounded-full w-16 h-16 object-cover"
                     onError={(e) => {
                       e.target.src = "/images/default-avatar.png";
                     }}
                   />
-                  <div className={`p-4 rounded-lg ${isCurrentUser ? "bg-[#17a2b8] text-white" : "bg-gray-600 text-white"}`}>
-                    <p>{msg.text}</p>
-                    <span className="text-xs text-gray-100 block mt-1">
-                      {new Date(msg.createdAt).toLocaleTimeString()}
-                    </span>
-                  </div>
+                  <p className={`p-5 ${isCurrentUser ? 'bg-[#17a2b8] text-white rounded-se-none' : 'bg-[#e7e3e3] text-[#555] rounded-ss-none'} rounded-lg`}>
+                    {msg.text}
+                  </p>
                 </motion.div>
               );
             })
@@ -151,17 +147,19 @@ const ChatPag = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <hr className="border-gray-300" />
-        <div id="textsec" className="flex flex-row justify-between items-center mt-4">
+        <hr className="h-0 border-[0.5px] border-solid mb-5" />
+        <div id="textsec" className="flex flex-row justify-center items-center gap-10">
           <textarea
-            placeholder="Escreva uma mensagem..."
+            placeholder="write a message"
             value={newMessage}
             onChange={handleTyping}
             onKeyDown={handleKeyPress}
-            className="w-[75%] h-12 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            cols={30}
+            rows={10}
+            className="w-[80%] h-28 p-3 border border-[lightgray] rounded-lg resize-none"
           ></textarea>
           <button
-            className="w-24 p-2 rounded-lg text-white font-semibold bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-all duration-200"
+            className="w-36 p-2 rounded-lg text-white font-semibold bg-[#17a2b8] flex items-center justify-center gap-2"
             onClick={handleSendMessage}
             disabled={!newMessage.trim() || isSending}
           >
@@ -169,7 +167,7 @@ const ChatPag = () => {
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
             ) : (
               <>
-                <Send size={18} className="mr-1" /> Enviar
+                <Send size={18} /> Send
               </>
             )}
           </button>
