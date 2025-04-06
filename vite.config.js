@@ -7,7 +7,7 @@ export default defineConfig({
   server:{
     proxy:{
       "/api": {
-        target:"https://api-dubber.onrender.com",
+        target:"http://localhost:8800",
         changeOrigin: true,
       }
     } 

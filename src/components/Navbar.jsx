@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useUserStore } from "../stores/useUserStore";
 import axios from "../lib/axios";
 
-const   Navbar = () => {
+const Navbar = () => {
   const { user, logout, setUser } = useUserStore();
   const isAdmin = user?.role === "admin";
 
@@ -44,7 +44,7 @@ const   Navbar = () => {
 
           <nav className="flex flex-wrap items-center gap-4">
             <Link
-              to={"/mainPage"}
+              to={user ? "/mainPage" : "/"}
               className="text-gray-700 hover:text-gray-500 text-lg font-semibold transition duration-300 ease-in-out"
             >
               Home

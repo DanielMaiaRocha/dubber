@@ -17,6 +17,7 @@ function Card({
   role,
   lang,
   country,
+  billingMethod,
 }) {
   const navigate = useNavigate();
   const { createChat, loading } = useChatStore();
@@ -53,6 +54,24 @@ function Card({
   const countryInfo = countryFlagEmoji.get(country);
   const countryFlag = countryInfo?.emoji || "🌍";
   const countryName = countryInfo?.name || country;
+
+  const getBillingSuffix = (method) => {
+    switch (method) {
+      case "hour":
+        return "/hr";
+      
+      case "minute":
+        return "/min";
+      
+      case "loop":
+        return "/loop";
+
+      default:
+        return "";     
+    }
+  }
+
+  const billingSuffix = getBillingSuffix(billingMethod)
 
   return (
     <div className="relative w-full max-w-md mx-auto bg-white text-gray-900 rounded-xl border overflow-hidden shadow-md hover:shadow-lg transition hover:scale-[1.02] duration-200">
@@ -99,15 +118,16 @@ function Card({
           )}
         </Stack>
 
-        {/* Avaliação e Preço */}
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-1 text-yellow-500">
-            <Star fontSize="small" />
-            <span className="text-sm font-bold">{rating.toFixed(1)}</span>
-            <span className="text-gray-500 text-sm">({starNumber})</span>
-          </div>
-          <p className="text-lg font-bold text-gray-800">R$ {price}</p>
+        <div className="flex items-center gap-1 text-yellow-500">
+          <Star fontSize="small" />
+          <span className="text-sm font-bold">{rating.toFixed(1)}</span>
+          <span className="text-gray-500 text-sm">({starNumber})</span>
         </div>
+        <p className="text-lg font-bold text-gray-800">
+          $ {price} <span className="text-sm text-gray-500">{billingSuffix}</span>
+        </p>
+      </div>
 
         {/* Botão de Chat */}
         <div className="mt-4">

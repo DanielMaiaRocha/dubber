@@ -48,7 +48,6 @@ const SingleCard = () => {
     videoElement.addEventListener('loadeddata', handleLoadedData);
     videoElement.addEventListener('error', handleError);
 
-    // Force load the video source
     videoElement.load();
 
     return () => {
@@ -91,10 +90,24 @@ const SingleCard = () => {
     country,
     role,
     video,
+    billingMethod,
   } = selectedCard;
 
   const rating = starNumber > 0 ? (totalStars / starNumber).toFixed(1) : "0.0";
   const starsCount = Math.round(starNumber > 0 ? totalStars / starNumber : 0);
+
+  const getBillingSuffix = (method) => {
+    switch (method) {
+      case "hour":
+        return "/hr";
+      case "minute":
+        return "/min";
+      case "loop":
+        return "/loop";
+      default:
+        return "";
+    }
+  };
 
   return (
     <div className="flex justify-center mt-20 mb-20 px-4">
@@ -105,7 +118,7 @@ const SingleCard = () => {
             {role || "No role specified"}
           </span>
           <h1 className="font-bold text-2xl">{title || "No title"}</h1>
-          
+
           <div className="flex items-center gap-4">
             <img
               src={cover || "/images/profile-bg.png"}
@@ -149,7 +162,7 @@ const SingleCard = () => {
                   <source src={video} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
-                
+
                 {videoLoading && (
                   <div className="absolute inset-0 w-full max-w-[800px] h-[450px] flex items-center justify-center bg-gray-200 rounded-lg">
                     <div className="text-center">
@@ -172,7 +185,7 @@ const SingleCard = () => {
             )}
           </div>
 
-          {/* Rest of the content remains unchanged */}
+          {/* Descrição completa */}
           <div className="mt-6">
             <h2 className="font-semibold text-lg mb-2">About Me</h2>
             <p className="text-gray-700 whitespace-pre-line">
@@ -244,13 +257,18 @@ const SingleCard = () => {
           <div className="border border-gray-300 rounded-lg p-5 sticky top-20">
             <div className="mb-4">
               <h3 className="text-lg font-medium">Let's Talk!</h3>
-              <h2 className="text-2xl font-bold mt-1">${price || 0}/hr</h2>
+              <h2 className="text-2xl font-bold mt-1">
+                ${price || 0}
+                <span className="text-base text-gray-600">
+                  {getBillingSuffix(billingMethod)}
+                </span>
+              </h2>
             </div>
             <p className="text-gray-700 mb-4">{shortDesc || "No description available."}</p>
             <div className="flex items-center gap-2 mb-4">
-              <img 
-                src="/images/clock.png" 
-                alt="clock" 
+              <img
+                src="/images/clock.png"
+                alt="clock"
                 className="w-6 h-6"
                 loading="eager"
               />

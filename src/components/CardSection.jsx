@@ -369,6 +369,7 @@ const CardSection = () => {
                   id={project.userId}
                   title={project.title}
                   price={project.price}
+                  billingMethod={project.billingMethod}
                   starNumber={project.starNumber}
                   totalStars={project.totalStars}
                   role={project.role}

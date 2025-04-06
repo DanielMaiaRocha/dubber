@@ -54,6 +54,7 @@ const Profile = () => {
     revisionNumber: 0,
     features: [],
     video: "",
+    billingMethod: "",
   });
   const [videoFile, setVideoFile] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
@@ -230,31 +231,35 @@ const Profile = () => {
       !cardData.role ||
       !cardData.desc ||
       !cardData.shortDesc ||
-      isNaN(cardData.price)
+      isNaN(cardData.price) ||
+      !cardData.billingMethod
     ) {
-      toast.error("Por favor, preencha todos os campos obrigatórios.");
+      toast.error("Por favor, preencha todos os campos obrigatórios, incluindo o método de cobrança.");
       return;
     }
-
+  
     try {
       setLoading(true);
-      
-      const videoBase64 = videoFile ? await convertFileToBase64(videoFile) : cardData.video;
-      
+  
+      const videoBase64 = videoFile
+        ? await convertFileToBase64(videoFile)
+        : cardData.video;
+  
       const cardDataToSend = {
         title: userData.name,
         role: cardData.role,
         shortDesc: cardData.shortDesc,
         desc: cardData.desc,
         price: cardData.price,
+        billingMethod: cardData.billingMethod, // <- corrigido aqui
         country: country || userData.country,
         lang: language || userData.lang,
         revisionNumber: cardData.revisionNumber,
         features: cardData.features,
         cover: profileImage,
-        video: videoBase64
+        video: videoBase64,
       };
-
+  
       if (userCard) {
         await updateCard(userCard._id, cardDataToSend);
         toast.success("Card atualizado com sucesso!");
@@ -262,10 +267,13 @@ const Profile = () => {
         await createCard(cardDataToSend);
         toast.success("Card criado com sucesso!");
       }
-      
+  
       // Atualiza o estado do vídeo após o sucesso
       if (videoFile) {
-        setCardData(prev => ({...prev, video: videoBase64}));
+        setCardData((prev) => ({
+          ...prev,
+          video: videoBase64,
+        }));
         setVideoFile(null);
         setVideoPreview(null);
       }
@@ -276,6 +284,7 @@ const Profile = () => {
       setLoading(false);
     }
   };
+  
 
   const handleSignOut = async () => {
     try {
@@ -599,20 +608,64 @@ const Profile = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-medium mb-1 md:flex items-center gap-2">
-                  <DollarSign size={16} />
-                  Price
-                </label>
-                <input
-                  type="number"
-                  className="w-full p-2 border rounded-md"
-                  placeholder="Price per hour"
-                  value={cardData.price}
-                  onChange={(e) =>
-                    setCardData({ ...cardData, price: e.target.value })
-                  }
-                />
-              </div>
+        <label className="block text-gray-700 text-sm font-medium mb-1 md:flex items-center gap-2">
+          <DollarSign size={16} />
+          Price
+        </label>
+        <input
+          type="number"
+          className="w-full p-2 border rounded-md"
+          placeholder="Enter your price"
+          value={cardData.price}
+          onChange={(e) =>
+            setCardData({ ...cardData, price: e.target.value })
+          }
+        />
+      </div>
+
+      {/* New Billing Method Checkbox Group */}
+      <div className="mb-4">
+        <label className="block text-gray-700 text-sm font-medium mb-2 md:flex items-center gap-2">
+          <DollarSign size={16} />
+          Billing Method
+        </label>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center space-x-2">
+            <input
+              type="radio"
+              name="billingMethod"
+              value="hour"
+              checked={cardData.billingMethod === "hour"}
+              onChange={() => setCardData({...cardData, billingMethod: "hour"})}
+              className="form-radio h-4 w-4 text-[#17a2b8]"
+            />
+            <span>Per Hour</span>
+          </label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="radio"
+              name="billingMethod"
+              value="minute"
+              checked={cardData.billingMethod === "minute"}
+              onChange={() => setCardData({...cardData, billingMethod: "minute"})}
+              className="form-radio h-4 w-4 text-[#17a2b8]"
+            />
+            <span>Per Minute</span>
+          </label>
+          <label className="flex items-center space-x-2">
+            <input
+              type="radio"
+              name="billingMethod"
+              value="loop"
+              checked={cardData.billingMethod === "loop"}
+              onChange={() => setCardData({...cardData, billingMethod: "loop"})}
+              className="form-radio h-4 w-4 text-[#17a2b8]"
+            />
+            <span>Per Loop</span>
+          </label>
+        </div>
+      </div>
+
 
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-medium mb-1 md:flex items-center gap-2">
